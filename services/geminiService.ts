@@ -3,14 +3,11 @@ import { ContentItem } from "../types";
 // Declare the global puter object from Puter.js
 declare global {
   interface Window {
-    puter: {
-      ai: {
-        chat: (prompt: string, options?: { model?: string; stream?: boolean }) => Promise<any>;
-      };
-      print: (text: string) => void;
-    };
+    puter: any;
   }
 }
+
+const puter = window.puter;
 
 // Custom error class for AI service errors
 export class AIServiceError extends Error {
