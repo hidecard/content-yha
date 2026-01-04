@@ -12,6 +12,18 @@ declare global {
   }
 }
 
+// Custom error class for AI service errors
+export class AIServiceError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public isRetryable: boolean = true
+  ) {
+    super(message);
+    this.name = 'AIServiceError';
+  }
+}
+
 // Default model for Puter.js - using gemini-3-flash for fast, free access
 const DEFAULT_MODEL = 'gemini-3-flash-preview';
 
@@ -33,17 +45,99 @@ const cleanJSONString = (text: string): string => {
     .trim();
 };
 
-export const geminiService = {
-  async generateIdeas(theme: string) {
-    const prompt = `Generate 5-10 content ideas based on the theme: "${theme}". 
-    IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
-    Return only a JSON array of objects with "title" and "description".`;
+// Helper to make AI calls with error handling
+async function callAI(prompt: string, operationName: string): Promise<string> {
+  try {
+    if (!window.puter?.ai?.chat) {
+      throw new AIServiceError(
+        'AI service မရနိုင်သေးပါ။ ကျေးဇူးပြု၍ စောင့်ပါ။',
+        'SERVICE_UNAVAILABLE',
+        true
+      );
+    }
 
     const response = await window.puter.ai.chat(prompt, {
       model: DEFAULT_MODEL,
     });
-    
+
     const text = typeof response === 'string' ? response : response?.text || '';
+    return text;
+  } catch (error) {
+    if (error instanceof AIServiceError) {
+      throw error;
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check for 401 Unauthorized
+    if (errorMessage.includes('401')) {
+      throw new AIServiceError(
+        'AI service ချိတ်ဆက်မှု ပျက်ပြယ်နေပါသည်။ ကျေးဇူးပြု၍ စောင့်ပြီး ပြန်လည်ကြိုးစားပါ။',
+        'UNAUTHORIZED',
+        true
+      );
+    }
+
+    // Check for API key leaked error
+    if (errorMessage.includes('API key was reported as leaked')) {
+      throw new AIServiceError(
+        'AI service တွင် ပြဿနာရှိနေပါသည်။ API key အတွက် အခက်အခဲရှိနေပါသည်။ နောက်မှ ပြန်လည်ကြိုးစားပါ။',
+        'API_KEY_LEAKED',
+        false
+      );
+    }
+
+    // Check for permission denied
+    if (errorMessage.includes('PERMISSION_DENIED') || errorMessage.includes('Permission denied')) {
+      throw new AIServiceError(
+        'AI service သို့ ဝင်မရပါ။ ခွင့်ပြုချက်မရှိပါ။',
+        'PERMISSION_DENIED',
+        false
+      );
+    }
+
+    // Check for whoami errors (authentication check)
+    if (errorMessage.includes('whoami')) {
+      throw new AIServiceError(
+        'AI service ချိတ်ဆက်မှု ပြဿနာရှိနေပါသည်။ ကျေးဇူးပြု၍ စောင့်ပြီး ပြန်လည်ကြိုးစားပါ။',
+        'AUTH_CHECK_FAILED',
+        true
+      );
+    }
+
+    // Network errors
+    if (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('Failed to fetch')) {
+      throw new AIServiceError(
+        'အင်တာနက် ချိတ်ဆက်မှု ပြဿနာရှိနေပါသည်။ ကျေးဇူးပြု၍ ချိတ်ဆက်မှုစစ်ပြီး ပြန်လည်ကြိုးစားပါ။',
+        'NETWORK_ERROR',
+        true
+      );
+    }
+
+    // Generic error
+    throw new AIServiceError(
+      `${operationName} ဆောင်ရွက်ရာတွင် အမှားဖြစ်ပွားခဲ့ပါသည်။ ပြန်လည်ကြိုးစားပါ။`,
+      'UNKNOWN_ERROR',
+      true
+    );
+  }
+}
+
+export const geminiService = {
+  async generateIdeas(theme: string) {
+    if (!theme.trim()) {
+      throw new AIServiceError(
+        'ခေါင်းစဉ်ထည့်ပါ။',
+        'INVALID_INPUT',
+        false
+      );
+    }
+
+    const prompt = `Generate 5-10 content ideas based on the theme: "${theme}". 
+    IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
+    Return only a JSON array of objects with "title" and "description".`;
+
+    const text = await callAI(prompt, 'အိုင်ဒီယာ ထုတ်ခြင်း');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, []);
   },
@@ -62,11 +156,7 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script).
     Return a JSON object with a single key "draft" containing the full text.`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'မူကြမ်း ထုတ်ခြင်း');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, { draft: '' });
   },
@@ -85,11 +175,7 @@ export const geminiService = {
 
     Return a JSON object with "viewsTips", "likesTips", and "commentsTips".`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'Engagement အကြံပြုချက်');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, {});
   },
@@ -103,11 +189,7 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script).
     Return a JSON object with "imageIdeas" (array of strings) and "videoIdea" (string).`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'Visual အိုင်ဒီယာ ထုတ်ခြင်း');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, { imageIdeas: [], videoIdea: '' });
   },
@@ -120,11 +202,7 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
     Return only a JSON array of objects with "title", "description", and "reasoning" (why this is good for the strategy).`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'ရှေ့လုပ်ငန်းစဉ် စီစဉ်ခြင်း');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, []);
   },
@@ -142,11 +220,7 @@ export const geminiService = {
     Focus on hooks, thumbnails, and calls to action.
     Return a JSON array of objects with "target" (title or 'General'), "suggestion", and "priority" ('High' or 'Medium').`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'စာရင်းဇယား အကြံပြုချက်');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, []);
   },
@@ -159,11 +233,7 @@ export const geminiService = {
     3. Comments (e.g., call to action, asking questions)
     Return a JSON object with keys "forViews", "forLikes", and "forComments", each being a string.`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'Engagement မြှင့်တင်ခြင်း');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, {});
   },
@@ -179,11 +249,7 @@ export const geminiService = {
     Suggest 1 specific tip for increasing VIEWS, 1 for LIKES, and 1 for COMMENTS.
     Return a JSON object with keys "viewsTip", "likesTip", "commentsTip".`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'တင်မည်မတင်မီ အကြံပြုချက်');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, {});
   },
@@ -195,11 +261,7 @@ export const geminiService = {
       ? `Suggest relevant trending hashtags (can be English/Myanmar) for this content: "${content}"`
       : `Rewrite this content in Myanmar language to be more engaging and polished, including emojis: "${content}"`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'ပြင်ဆင်ခြင်း');
     return text.trim();
   },
 
@@ -216,13 +278,8 @@ export const geminiService = {
     Provide 3 specific task recommendations or improvements for this item in Myanmar language. 
     Return a JSON array of objects with "message", "type" (one of: 'improvement', 'missing', 'task'), and "priority" (one of: 'high', 'medium', 'low').`;
 
-    const response = await window.puter.ai.chat(prompt, {
-      model: DEFAULT_MODEL,
-    });
-    
-    const text = typeof response === 'string' ? response : response?.text || '';
+    const text = await callAI(prompt, 'အကြံပြုချက်များ');
     const cleanedText = cleanJSONString(text);
     return parseJSON(cleanedText, []);
   }
 };
-

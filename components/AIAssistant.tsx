@@ -23,9 +23,10 @@ import {
   Heart,
   MessageCircle,
   ChevronLeft,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
-import { geminiService } from '../services/geminiService';
+import { geminiService, AIServiceError } from '../services/geminiService';
 import { ContentItem } from '../types';
 
 interface Props {
@@ -39,50 +40,68 @@ const AIAssistant: React.FC<Props> = ({ content }) => {
   const [loading, setLoading] = useState(false);
   const [ideas, setIdeas] = useState<{ title: string; description: string }[]>([]);
   const [ideasPage, setIdeasPage] = useState(1);
-  
+  const [error, setError] = useState<string | null>(null);
+
   const [editorText, setEditorText] = useState('');
   const [refinementResult, setRefinementResult] = useState('');
   const [copied, setCopied] = useState(false);
-  
+
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyResults, setStrategyResults] = useState<{ title: string; description: string; reasoning: string }[]>([]);
   const [strategyPage, setStrategyPage] = useState(1);
-  
+
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<{ target: string; suggestion: string; priority: string }[]>([]);
 
   const [optimizationLoading, setOptimizationLoading] = useState(false);
   const [optimizationTips, setOptimizationTips] = useState<{ forViews: string; forLikes: string; forComments: string } | null>(null);
 
+  const clearError = () => setError(null);
+
   const handleGenerateIdeas = async () => {
     if (!theme) return;
+    clearError();
     setLoading(true);
     setIdeasPage(1);
     try {
       const result = await geminiService.generateIdeas(theme);
       setIdeas(result);
+    } catch (err) {
+      if (err instanceof AIServiceError) {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleGenerateStrategy = async (timeframe: 'week' | 'month') => {
+    clearError();
     setStrategyLoading(true);
     setStrategyPage(1);
     const existingTitles = content.map(item => item.title);
     try {
       const result = await geminiService.generateFutureStrategy(existingTitles, timeframe);
       setStrategyResults(result);
+    } catch (err) {
+      if (err instanceof AIServiceError) {
+        setError(err.message);
+      }
     } finally {
       setStrategyLoading(false);
     }
   };
 
   const handleRunAnalysis = async () => {
+    clearError();
     setAnalysisLoading(true);
     try {
       const result = await geminiService.getGlobalEngagementAnalysis(content);
       setAnalysisResults(result);
+    } catch (err) {
+      if (err instanceof AIServiceError) {
+        setError(err.message);
+      }
     } finally {
       setAnalysisLoading(false);
     }
@@ -90,11 +109,16 @@ const AIAssistant: React.FC<Props> = ({ content }) => {
 
   const handleOptimizeDraft = async () => {
     if (!editorText) return;
+    clearError();
     setOptimizationLoading(true);
     setRefinementResult('');
     try {
       const result = await geminiService.optimizeEngagement(editorText);
       setOptimizationTips(result);
+    } catch (err) {
+      if (err instanceof AIServiceError) {
+        setError(err.message);
+      }
     } finally {
       setOptimizationLoading(false);
     }
@@ -102,11 +126,16 @@ const AIAssistant: React.FC<Props> = ({ content }) => {
 
   const handleRefine = async (type: 'hook' | 'rewrite' | 'hashtags') => {
     if (!editorText) return;
+    clearError();
     setLoading(true);
     setOptimizationTips(null);
     try {
       const result = await geminiService.refineContent(editorText, type);
       setRefinementResult(result);
+    } catch (err) {
+      if (err instanceof AIServiceError) {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,6 +155,22 @@ const AIAssistant: React.FC<Props> = ({ content }) => {
 
   return (
     <div className="space-y-8">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-red-700 font-medium">{error}</p>
+          </div>
+          <button
+            onClick={clearError}
+            className="text-red-400 hover:text-red-600 text-sm"
+          >
+            ပိတ်ရန်
+          </button>
+        </div>
+      )}
+
       {/* Strategic Future Planning & Analysis Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Strategy Planner */}
