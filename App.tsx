@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Sparkles, 
-  BarChart3, 
-  CheckSquare, 
-  RefreshCw, 
-  Table as TableIcon,
+import {
+  LayoutDashboard,
+  Sparkles,
+  BarChart3,
+  CheckSquare,
+  RefreshCw,
   ChevronRight,
   PlusCircle,
   FileText,
@@ -179,10 +178,10 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {activeTab === 'dashboard' && <Dashboard items={content} />}
-            {activeTab === 'ai' && <AIAssistant content={content} />}
-            {activeTab === 'analytics' && <Analytics items={content} />}
-            {activeTab === 'tasks' && <TaskTracker items={content} />}
+            {activeTab === 'dashboard' && <Dashboard items={content || []} />}
+            {activeTab === 'ai' && <AIAssistant content={content || []} />}
+            {activeTab === 'analytics' && <Analytics items={content || []} />}
+            {activeTab === 'tasks' && <TaskTracker items={content || []} />}
           </div>
         )}
       </main>

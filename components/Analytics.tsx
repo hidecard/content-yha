@@ -89,7 +89,7 @@ const Analytics: React.FC<Props> = ({ items }) => {
               <div className="flex items-center gap-1.5"><span className="w-3 h-3 bg-pink-500 rounded-full"></span> မှတ်ချက်များ</div>
             </div>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -109,7 +109,7 @@ const Analytics: React.FC<Props> = ({ items }) => {
         {/* Platform Share */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[450px] flex flex-col">
           <h3 className="font-bold text-gray-900 mb-8">ပလက်ဖောင်းအလိုက် ဝေစု</h3>
-          <div className="flex-1">
+          <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

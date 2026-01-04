@@ -1,32 +1,51 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
 import { ContentItem } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Declare the global puter object from Puter.js
+declare global {
+  interface Window {
+    puter: {
+      ai: {
+        chat: (prompt: string, options?: { model?: string; stream?: boolean }) => Promise<any>;
+      };
+      print: (text: string) => void;
+    };
+  }
+}
+
+// Default model for Puter.js - using gemini-3-flash for fast, free access
+const DEFAULT_MODEL = 'gemini-3-flash-preview';
+
+// Helper function to parse JSON from response text
+const parseJSON = (text: string, fallback: any) => {
+  try {
+    return JSON.parse(text || '[]');
+  } catch {
+    return fallback;
+  }
+};
+
+// Helper to clean JSON string (remove markdown code blocks if present)
+const cleanJSONString = (text: string): string => {
+  return text
+    .replace(/```json\n/g, '')
+    .replace(/```\n/g, '')
+    .replace(/```/g, '')
+    .trim();
+};
 
 export const geminiService = {
   async generateIdeas(theme: string) {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Generate 5-10 content ideas based on the theme: "${theme}". 
-      IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
-      Return only a JSON array of objects with "title" and "description".`,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-            },
-            required: ['title', 'description'],
-          },
-        },
-      },
+    const prompt = `Generate 5-10 content ideas based on the theme: "${theme}". 
+    IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
+    Return only a JSON array of objects with "title" and "description".`;
+
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '[]');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, []);
   },
 
   async generateDraft(title: string, description: string) {
@@ -43,21 +62,13 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script).
     Return a JSON object with a single key "draft" containing the full text.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            draft: { type: Type.STRING },
-          },
-          required: ['draft'],
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '{ "draft": "" }');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, { draft: '' });
   },
 
   async getEngagementBooster(item: ContentItem, draftText?: string) {
@@ -74,23 +85,13 @@ export const geminiService = {
 
     Return a JSON object with "viewsTips", "likesTips", and "commentsTips".`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            viewsTips: { type: Type.STRING },
-            likesTips: { type: Type.STRING },
-            commentsTips: { type: Type.STRING },
-          },
-          required: ['viewsTips', 'likesTips', 'commentsTips'],
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '{}');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, {});
   },
 
   async generateVisualIdeas(title: string, description: string) {
@@ -102,25 +103,13 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script).
     Return a JSON object with "imageIdeas" (array of strings) and "videoIdea" (string).`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            imageIdeas: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            },
-            videoIdea: { type: Type.STRING },
-          },
-          required: ['imageIdeas', 'videoIdea'],
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '{ "imageIdeas": [], "videoIdea": "" }');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, { imageIdeas: [], videoIdea: '' });
   },
 
   async generateFutureStrategy(existingTitles: string[], timeframe: 'week' | 'month') {
@@ -131,26 +120,13 @@ export const geminiService = {
     IMPORTANT: The response MUST be in Myanmar language (Burmese script). 
     Return only a JSON array of objects with "title", "description", and "reasoning" (why this is good for the strategy).`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-              reasoning: { type: Type.STRING },
-            },
-            required: ['title', 'description', 'reasoning'],
-          },
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '[]');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, []);
   },
 
   async getGlobalEngagementAnalysis(items: ContentItem[]) {
@@ -166,26 +142,13 @@ export const geminiService = {
     Focus on hooks, thumbnails, and calls to action.
     Return a JSON array of objects with "target" (title or 'General'), "suggestion", and "priority" ('High' or 'Medium').`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              target: { type: Type.STRING },
-              suggestion: { type: Type.STRING },
-              priority: { type: Type.STRING },
-            },
-            required: ['target', 'suggestion', 'priority'],
-          },
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '[]');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, []);
   },
 
   async optimizeEngagement(content: string) {
@@ -196,23 +159,13 @@ export const geminiService = {
     3. Comments (e.g., call to action, asking questions)
     Return a JSON object with keys "forViews", "forLikes", and "forComments", each being a string.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            forViews: { type: Type.STRING },
-            forLikes: { type: Type.STRING },
-            forComments: { type: Type.STRING },
-          },
-          required: ['forViews', 'forLikes', 'forComments'],
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '{}');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, {});
   },
 
   async getPreUploadTips(item: ContentItem) {
@@ -226,23 +179,13 @@ export const geminiService = {
     Suggest 1 specific tip for increasing VIEWS, 1 for LIKES, and 1 for COMMENTS.
     Return a JSON object with keys "viewsTip", "likesTip", "commentsTip".`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            viewsTip: { type: Type.STRING },
-            likesTip: { type: Type.STRING },
-            commentsTip: { type: Type.STRING },
-          },
-          required: ['viewsTip', 'likesTip', 'commentsTip'],
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '{}');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, {});
   },
 
   async refineContent(content: string, type: 'hook' | 'rewrite' | 'hashtags') {
@@ -252,11 +195,12 @@ export const geminiService = {
       ? `Suggest relevant trending hashtags (can be English/Myanmar) for this content: "${content}"`
       : `Rewrite this content in Myanmar language to be more engaging and polished, including emojis: "${content}"`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return response.text || '';
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    return text.trim();
   },
 
   async getRecommendations(item: ContentItem) {
@@ -272,25 +216,13 @@ export const geminiService = {
     Provide 3 specific task recommendations or improvements for this item in Myanmar language. 
     Return a JSON array of objects with "message", "type" (one of: 'improvement', 'missing', 'task'), and "priority" (one of: 'high', 'medium', 'low').`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              message: { type: Type.STRING },
-              type: { type: Type.STRING },
-              priority: { type: Type.STRING },
-            },
-            required: ['message', 'type', 'priority'],
-          },
-        },
-      },
+    const response = await window.puter.ai.chat(prompt, {
+      model: DEFAULT_MODEL,
     });
-    return JSON.parse(response.text || '[]');
+    
+    const text = typeof response === 'string' ? response : response?.text || '';
+    const cleanedText = cleanJSONString(text);
+    return parseJSON(cleanedText, []);
   }
 };
+

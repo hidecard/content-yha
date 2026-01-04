@@ -171,7 +171,7 @@ const Dashboard: React.FC<Props> = ({ items }) => {
                         <span title="TikTok" className={`p-1.5 rounded-md ${item.tiktok ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-400 opacity-40'}`}>
                           <Music2 size={14} />
                         </span>
-                        <span title="Telegram" className={`p-1.5 rounded-md ${item.telegram ? 'bg-sky-100 text- sky-600' : 'bg-gray-100 text-gray-400 opacity-40'}`}>
+                        <span title="Telegram" className={`p-1.5 rounded-md ${item.telegram ? 'bg-sky-100 text-sky-600' : 'bg-gray-100 text-gray-400 opacity-40'}`}>
                           <Send size={14} />
                         </span>
                       </div>
@@ -279,7 +279,7 @@ const Dashboard: React.FC<Props> = ({ items }) => {
                                           <Camera size={12} /> ပုံ အတွက် အိုင်ဒီယာများ
                                         </div>
                                         <ul className="space-y-2">
-                                          {visualIdeas[item.id]?.imageIdeas.map((idea, idx) => (
+                                          {(visualIdeas[item.id]?.imageIdeas || []).map((idea, idx) => (
                                             <li key={idx} className="text-xs text-gray-700 bg-amber-50/50 p-2 rounded-lg border border-amber-50">
                                               {idea}
                                             </li>
